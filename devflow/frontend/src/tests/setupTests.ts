@@ -48,8 +48,13 @@ Object.defineProperty(window, 'matchMedia', {
 });
 
 // Mock IntersectionObserver
-global.IntersectionObserver = class IntersectionObserver {
+window.IntersectionObserver = class IntersectionObserver {
   observe = jest.fn();
   disconnect = jest.fn();
   unobserve = jest.fn();
+  takeRecords = jest.fn();
+  root = null;
+  rootMargin = '';
+  thresholds = [];
+  constructor() {}
 } as any;
