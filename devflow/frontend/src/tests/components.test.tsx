@@ -13,7 +13,13 @@ import uiReducer from '../store/slices/uiSlice';
 // ─── Test Store Factory ─────────────
 const createTestStore = (preloadedState?: any) =>
   configureStore({
-    reducer: { auth: authReducer, projects: projectReducer, tasks: taskReducer, notifications: notificationReducer, ui: uiReducer },
+    reducer: {
+      auth: authReducer,
+      projects: projectReducer,
+      tasks: taskReducer,
+      notifications: notificationReducer,
+      ui: uiReducer
+    },
     ...(preloadedState && { preloadedState }),
   });
 

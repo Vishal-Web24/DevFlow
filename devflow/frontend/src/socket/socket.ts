@@ -5,6 +5,21 @@ let socket: Socket | null = null;
 export const connectSocket = (token: string): Socket => {
   if (socket?.connected) return socket;
 
+  socket = io(window.location.origin, {
+    auth: { token },
+    withCredentials: true,
+    transports: ['websocket', 'polling'],
+    reconnectionDelay: 1000,
+    reconnectionAttempts: 5,
+  });
+
+  socket.on('connect', () => console.log('Socket connected:', socket?.id));
+  socket.on('disconnect', (reason) => console.log('Socket disconnected:', reason));
+  socket.on('connect_error', (err) => console.error('Socket error:', err.message));
+
+  return socket;
+};
+
   const socketUrl = typeof window !== 'undefined' ? window.location.origin : '';
 socket = io(socketUrl, {
     auth: { token },
