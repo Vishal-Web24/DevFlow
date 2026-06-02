@@ -14,7 +14,7 @@ import uiReducer from '../store/slices/uiSlice';
 const createTestStore = (preloadedState?: any) =>
   configureStore({
     reducer: { auth: authReducer, projects: projectReducer, tasks: taskReducer, notifications: notificationReducer, ui: uiReducer },
-    preloadedState,
+    ...(preloadedState && { preloadedState }),
   });
 
 const renderWithProviders = (ui: React.ReactElement, { preloadedState }: { preloadedState?: any } = {}) => {

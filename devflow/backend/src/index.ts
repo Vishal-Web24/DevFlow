@@ -59,8 +59,8 @@ const startServer = async () => {
 
     httpServer.listen(PORT, () => {
       console.log(`\n🚀 DevFlow backend running on port ${PORT}`);
-      console.log(`📡 Environment: ${process.env.NODE_ENV}`);
-      console.log(`🔗 API: http://localhost:${PORT}/api\n`);
+      console.log(` Environment: ${process.env.NODE_ENV}`);
+      console.log(` API: http://localhost:${PORT}/api\n`);
     });
   } catch (error) {
     console.error('❌ Failed to start server:', error);

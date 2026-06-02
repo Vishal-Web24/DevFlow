@@ -2,9 +2,7 @@ import axios, { AxiosError, InternalAxiosRequestConfig } from "axios";
 import toast from "react-hot-toast";
 
 const api = axios.create({
-  baseURL:
-    (typeof import.meta !== "undefined" && import.meta.env?.VITE_API_URL) ||
-    "/api",
+ baseURL: '/api',
 });
 
 // ─── Request interceptor: attach token 
