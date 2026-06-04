@@ -2,17 +2,18 @@ import axios, { AxiosError, InternalAxiosRequestConfig } from "axios";
 import toast from "react-hot-toast";
 
 const api = axios.create({
- baseURL: '/api',
+  //  baseURL: '/api',
+  baseURL: import.meta.env.VITE_API_URL,
 });
 
-// ─── Request interceptor: attach token 
+// ─── Request interceptor: attach token
 api.interceptors.request.use((config: InternalAxiosRequestConfig) => {
   const token = localStorage.getItem("accessToken");
   if (token && config.headers) config.headers.Authorization = `Bearer ${token}`;
   return config;
 });
 
-// ─── Response interceptor: auto-refresh 
+// ─── Response interceptor: auto-refresh
 let isRefreshing = false;
 let failedQueue: Array<{
   resolve: (v: string) => void;
@@ -48,9 +49,15 @@ api.interceptors.response.use(
 
         try {
           const refreshToken = localStorage.getItem("refreshToken");
-          const { data } = await axios.post("/api/auth/refresh", {
-            refreshToken,
-          });
+          // const { data } = await axios.post("/api/auth/refresh", {
+          //   refreshToken,
+          // });
+          const { data } = await axios.post(
+            `${import.meta.env.VITE_API_URL}/auth/refresh`,
+            {
+              refreshToken,
+            },
+          );
           localStorage.setItem("accessToken", data.accessToken);
           localStorage.setItem("refreshToken", data.refreshToken);
           processQueue(null, data.accessToken);
