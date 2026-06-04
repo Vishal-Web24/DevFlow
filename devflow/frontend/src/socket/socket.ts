@@ -1,45 +1,93 @@
-import { io, Socket } from 'socket.io-client';
+import { Server as HttpServer } from 'http';
+import { Server, Socket } from 'socket.io';
+import jwt from 'jsonwebtoken';
 
-let socket: Socket | null = null;
+let io: Server;
 
-export const connectSocket = (token: string): Socket => {
-  if (socket?.connected) return socket;
+interface AuthSocket extends Socket {
+  userId?: string;
+}
 
-  const socketUrl = import.meta.env.VITE_SOCKET_URL || window.location.origin;
-socket = io(socketUrl, {
-    auth: { token },
-    withCredentials: true,
-    transports: ['websocket', 'polling'],
-    reconnectionDelay: 1000,
-    reconnectionAttempts: 5,
+export const initSocket = (httpServer: HttpServer): Server => {
+  io = new Server(httpServer, {
+    cors: {
+      origin: [
+        'https://dev-flow-pied.vercel.app',
+        'https://dev-flow-git-main-vishals-projects-3d99ee23.vercel.app',
+        'http://localhost:3000',
+        process.env.FRONTEND_URL || '',
+      ].filter(Boolean),
+      credentials: true,
+    },
+    pingTimeout: 60000,
+    pingInterval: 25000,
   });
 
-  socket.on('connect', () => console.log('Socket connected:', socket?.id));
-  socket.on('disconnect', (reason) => console.log('Socket disconnected:', reason));
-  socket.on('connect_error', (err) => console.error('Socket error:', err.message));
+  io.use((socket: AuthSocket, next) => {
+    const token = socket.handshake.auth?.token ||
+      socket.handshake.headers?.authorization?.split(' ')[1];
+    if (!token) return next(new Error('Authentication required'));
+    try {
+      const payload = jwt.verify(token, process.env.JWT_SECRET!) as { userId: string };
+      socket.userId = payload.userId;
+      next();
+    } catch {
+      next(new Error('Invalid token'));
+    }
+  });
 
-  return socket;
+  io.on('connection', (socket: AuthSocket) => {
+    const userId = socket.userId!;
+    console.log(`User connected: ${userId}`);
+
+    socket.join(`user:${userId}`);
+
+    socket.on('join:project', (projectId: string) => {
+      socket.join(`project:${projectId}`);
+      socket.to(`project:${projectId}`).emit('user:joined', { userId });
+    });
+
+    socket.on('leave:project', (projectId: string) => {
+      socket.leave(`project:${projectId}`);
+      socket.to(`project:${projectId}`).emit('user:left', { userId });
+    });
+
+    socket.on('typing:start', ({ projectId, taskId }: { projectId: string; taskId: string }) => {
+      socket.to(`project:${projectId}`).emit('user:typing', { userId, taskId });
+    });
+
+    socket.on('typing:stop', ({ projectId, taskId }: { projectId: string; taskId: string }) => {
+      socket.to(`project:${projectId}`).emit('user:stopped-typing', { userId, taskId });
+    });
+
+    socket.on('disconnect', () => {
+      console.log(`User disconnected: ${userId}`);
+    });
+
+    socket.on('ping', () => socket.emit('pong', { timestamp: Date.now() }));
+  });
+
+  console.log('Socket.io initialized');
+  return io;
 };
 
-export const getSocket = (): Socket | null => socket;
-
-export const disconnectSocket = (): void => {
-  socket?.disconnect();
-  socket = null;
+export const emitTaskUpdate = (projectId: string, data: object): void => {
+  io?.to(`project:${projectId}`).emit('task:updated', data);
 };
 
-export const joinProject = (projectId: string): void => {
-  socket?.emit('join:project', projectId);
+export const emitNotification = (userId: string, notification: object): void => {
+  io?.to(`user:${userId}`).emit('notification:new', notification);
 };
 
-export const leaveProject = (projectId: string): void => {
-  socket?.emit('leave:project', projectId);
+export const emitActivityFeed = (projectId: string, activity: object): void => {
+  io?.to(`project:${projectId}`).emit('activity:new', {
+    ...activity,
+    timestamp: Date.now(),
+  });
 };
 
-export const emitTypingStart = (projectId: string, taskId: string): void => {
-  socket?.emit('typing:start', { projectId, taskId });
+export const emitProjectUpdate = (projectId: string, data: object): void => {
+  io?.to(`project:${projectId}`).emit('project:updated', data);
 };
 
-export const emitTypingStop = (projectId: string, taskId: string): void => {
-  socket?.emit('typing:stop', { projectId, taskId });
-};
+export const getIO = (): Server => io;
