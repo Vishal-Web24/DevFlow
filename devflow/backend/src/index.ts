@@ -29,7 +29,11 @@ const httpServer = createServer(app);
 
 app.use(
   cors({
-    origin: process.env.FRONTEND_URL,
+    origin: [
+      "https://dev-flow-pied.vercel.app",
+      "https://dev-flow-git-main-vishals-projects-3d99ee23.vercel.app",
+      "http://localhost:3000",
+    ],
     credentials: true,
   })
 );
