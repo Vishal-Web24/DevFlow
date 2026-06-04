@@ -5,7 +5,8 @@ let socket: Socket | null = null;
 export const connectSocket = (token: string): Socket => {
   if (socket?.connected) return socket;
 
-  socket = io(window.location.origin, {
+  const socketUrl = import.meta.env.VITE_SOCKET_URL || window.location.origin;
+socket = io(socketUrl, {
     auth: { token },
     withCredentials: true,
     transports: ['websocket', 'polling'],
