@@ -2,7 +2,7 @@
 node_modules/
 .npm
 
-# Environment files — NEVER commit these
+# Environment files 
 .env
 .env.local
 .env.production
@@ -21,7 +21,7 @@ coverage/
 
 # Prisma
 backend/src/prisma/migrations/**/migration_lock.toml
-
+.prismanp
 # Logs
 *.log
 npm-debug.log*
