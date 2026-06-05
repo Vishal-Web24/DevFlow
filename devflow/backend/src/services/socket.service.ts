@@ -1,76 +1,97 @@
-import axios, { AxiosError, InternalAxiosRequestConfig } from 'axios';
-import toast from 'react-hot-toast';
+import { Server as HttpServer } from 'http';
+import { Server, Socket } from 'socket.io';
+import jwt from 'jsonwebtoken';
 
-const BASE_URL = import.meta.env.VITE_API_URL || '/api';
+let io: Server;
 
-const api = axios.create({
-  baseURL: BASE_URL,
-  withCredentials: true,
-  timeout: 30000,
-});
+interface AuthSocket extends Socket {
+  userId?: string;
+}
 
-api.interceptors.request.use((config: InternalAxiosRequestConfig) => {
-  const token = localStorage.getItem('accessToken');
-  if (token && config.headers) config.headers.Authorization = `Bearer ${token}`;
-  return config;
-});
+export const initSocket = (httpServer: HttpServer): Server => {
+  io = new Server(httpServer, {
+    cors: {
+      origin: [
+        'https://dev-flow-pied.vercel.app',
+        'https://dev-flow-git-main-vishals-projects-3d99ee23.vercel.app',
+        'http://localhost:3000',
+        process.env.FRONTEND_URL || '',
+      ].filter(Boolean),
+      credentials: true,
+    },
+    pingTimeout: 60000,
+    pingInterval: 25000,
+  });
 
-let isRefreshing = false;
-let failedQueue: Array<{ resolve: (v: string) => void; reject: (e: unknown) => void }> = [];
+  io.use((socket: AuthSocket, next) => {
+    const token = socket.handshake.auth?.token ||
+      socket.handshake.headers?.authorization?.split(' ')[1];
+    if (!token) return next(new Error('Authentication required'));
+    try {
+      const payload = jwt.verify(
+        token, process.env.JWT_SECRET!
+      ) as { userId: string };
+      socket.userId = payload.userId;
+      next();
+    } catch {
+      next(new Error('Invalid token'));
+    }
+  });
 
-const processQueue = (error: unknown, token: string | null = null) => {
-  failedQueue.forEach((p) => (error ? p.reject(error) : p.resolve(token!)));
-  failedQueue = [];
+  io.on('connection', (socket: AuthSocket) => {
+    const userId = socket.userId!;
+    console.log(`User connected: ${userId}`);
+
+    socket.join(`user:${userId}`);
+
+    socket.on('join:project', (projectId: string) => {
+      socket.join(`project:${projectId}`);
+      socket.to(`project:${projectId}`).emit('user:joined', { userId });
+    });
+
+    socket.on('leave:project', (projectId: string) => {
+      socket.leave(`project:${projectId}`);
+      socket.to(`project:${projectId}`).emit('user:left', { userId });
+    });
+
+    socket.on('typing:start', (data: { projectId: string; taskId: string }) => {
+      socket.to(`project:${data.projectId}`).emit('user:typing', {
+        userId, taskId: data.taskId,
+      });
+    });
+
+    socket.on('typing:stop', (data: { projectId: string; taskId: string }) => {
+      socket.to(`project:${data.projectId}`).emit('user:stopped-typing', {
+        userId, taskId: data.taskId,
+      });
+    });
+
+    socket.on('disconnect', () => {
+      console.log(`User disconnected: ${userId}`);
+    });
+  });
+
+  console.log('Socket.io initialized');
+  return io;
 };
 
-api.interceptors.response.use(
-  (response) => response,
-  async (error: AxiosError) => {
-    const original = error.config as InternalAxiosRequestConfig & { _retry?: boolean };
+export const emitTaskUpdate = (projectId: string, data: object): void => {
+  io?.to(`project:${projectId}`).emit('task:updated', data);
+};
 
-    if (error.response?.status === 401 && !original._retry) {
-      const data = error.response.data as { code?: string };
-      if (data?.code === 'TOKEN_EXPIRED') {
-        if (isRefreshing) {
-          return new Promise((resolve, reject) => {
-            failedQueue.push({ resolve, reject });
-          }).then((token) => {
-            original.headers.Authorization = `Bearer ${token}`;
-            return api(original);
-          });
-        }
+export const emitNotification = (userId: string, notification: object): void => {
+  io?.to(`user:${userId}`).emit('notification:new', notification);
+};
 
-        original._retry = true;
-        isRefreshing = true;
+export const emitActivityFeed = (projectId: string, activity: object): void => {
+  io?.to(`project:${projectId}`).emit('activity:new', {
+    ...activity,
+    timestamp: Date.now(),
+  });
+};
 
-        try {
-          const refreshToken = localStorage.getItem('refreshToken');
-          const { data } = await axios.post(`${BASE_URL}/auth/refresh`, { refreshToken });
-          localStorage.setItem('accessToken', data.accessToken);
-          localStorage.setItem('refreshToken', data.refreshToken);
-          processQueue(null, data.accessToken);
-          original.headers.Authorization = `Bearer ${data.accessToken}`;
-          return api(original);
-        } catch (refreshError) {
-          processQueue(refreshError, null);
-          localStorage.clear();
-          window.location.href = '/login';
-          return Promise.reject(refreshError);
-        } finally {
-          isRefreshing = false;
-        }
-      }
+export const emitProjectUpdate = (projectId: string, data: object): void => {
+  io?.to(`project:${projectId}`).emit('project:updated', data);
+};
 
-      localStorage.clear();
-      window.location.href = '/login';
-    }
-
-    if (error.response?.status && error.response.status >= 500) {
-      toast.error('Server error. Please try again.');
-    }
-
-    return Promise.reject(error);
-  }
-);
-
-export default api;
+export const getIO = (): Server => io;
