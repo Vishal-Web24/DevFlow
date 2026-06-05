@@ -18,6 +18,7 @@ import aiRoutes from './routes/ai.routes';
 import notificationRoutes from './routes/notification.routes';
 
 const app = express();
+app.set('trust proxy', 1);
 const httpServer = createServer(app);
 
 app.use(cors({

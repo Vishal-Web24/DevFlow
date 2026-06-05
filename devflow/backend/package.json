@@ -7,16 +7,16 @@
     "schema": "src/prisma/schema.prisma"
   },
   "scripts": {
-    "dev": "nodemon --exec ts-node src/index.ts",
-    "build": "tsc",
-    "start": "node dist/index.js",
-    "test": "jest --forceExit --detectOpenHandles",
-    "test:coverage": "jest --coverage --forceExit",
-    "db:migrate": "npx prisma migrate dev",
-    "db:generate": "npx prisma generate",
-    "db:studio": "npx prisma studio",
-    "db:seed": "ts-node src/prisma/seed.ts"
-  },
+  "dev": "nodemon --exec ts-node src/index.ts",
+  "build": "tsc",
+  "start": "npx prisma migrate deploy && npx ts-node src/prisma/seed.ts && node dist/index.js",
+  "test": "jest --forceExit --detectOpenHandles",
+  "test:coverage": "jest --coverage --forceExit",
+  "db:migrate": "npx prisma migrate dev",
+  "db:generate": "npx prisma generate",
+  "db:studio": "npx prisma studio",
+  "db:seed": "ts-node src/prisma/seed.ts"
+},
   "dependencies": {
     "@google/generative-ai": "^0.21.0",
     "@prisma/client": "^6.19.3",
