@@ -61,34 +61,39 @@ export const explainBug = async (req: AuthRequest, res: Response): Promise<void>
   const { errorLog, language = 'JavaScript' } = req.body;
   if (!errorLog) { res.status(400).json({ error: 'Error log is required' }); return; }
 
-  const cacheKey = `ai:bug:${Buffer.from(errorLog).toString('base64').slice(0, 40)}`;
-  const cached = await cacheGet(cacheKey);
-  if (cached) { res.json(cached); return; }
+  try {
+    const cacheKey = `ai:bug:${Buffer.from(errorLog).toString('base64').slice(0, 40)}`;
+    const cached = await cacheGet(cacheKey);
+    if (cached) { res.json(cached); return; }
 
-  const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
-  const result = await model.generateContent(`You are a senior ${language} developer. Analyze this error log and provide a structured explanation.
+    const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
+    const result = await model.generateContent(`You are a senior ${language} developer. Analyze this error log.
 
 Error Log:
 ${errorLog}
 
-Provide your response in this exact markdown format:
+Respond in this format:
 
-## 🔍 Root Cause
-[Clear explanation of what caused the error in plain English]
+## Root Cause
+[plain English explanation]
 
-## 🛠 Fix
-[Step-by-step fix with code snippet]
+## Fix
+[step-by-step fix with code]
 
-## ✅ Prevention
-[How to prevent this in the future]
+## Prevention
+[how to prevent this]
 
-## 📊 Severity
-[LOW / MEDIUM / HIGH / CRITICAL] - [one line explanation]`);
+## Severity
+[LOW / MEDIUM / HIGH / CRITICAL]`);
 
-  const explanation = result.response.text();
-  const response = { explanation, language };
-  await cacheSet(cacheKey, response, 3600);
-  res.json(response);
+    const explanation = result.response.text();
+    const response = { explanation, language };
+    await cacheSet(cacheKey, response, 3600);
+    res.json(response);
+  } catch (err: any) {
+    console.error('Gemini error:', err.message);
+    res.status(500).json({ error: 'AI service temporarily unavailable. Please try again.' });
+  }
 };
 
 // ─── Feature 4: AI Meeting Summarizer (Gemini) ───────────
@@ -96,34 +101,37 @@ export const summarizeMeeting = async (req: AuthRequest, res: Response): Promise
   const { notes, meetingTitle = 'Team Meeting' } = req.body;
   if (!notes) { res.status(400).json({ error: 'Meeting notes are required' }); return; }
 
-  const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
-  const result = await model.generateContent(`You are a technical project manager. Summarize these meeting notes professionally.
+  try {
+    const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
+    const result = await model.generateContent(`Summarize this meeting professionally.
 
 Meeting: ${meetingTitle}
 Notes: ${notes}
 
-Provide a structured summary in this exact markdown format:
+Format:
 
-## 📋 Meeting Summary
+## Meeting Summary
 [2-3 sentence overview]
 
-## ✅ Key Decisions
-- [Decision 1]
-- [Decision 2]
+## Key Decisions
+- [decision]
 
-## 🎯 Action Items
+## Action Items
 | Task | Assignee | Deadline |
 |------|----------|----------|
 | [task] | [name] | [date] |
 
-## 🚧 Blockers Identified
-- [Blocker 1 or "None"]
+## Blockers
+- [blocker or None]
 
-## 📅 Next Steps
-- [Next step 1]
-- [Next step 2]`);
+## Next Steps
+- [step]`);
 
-  res.json({ summary: result.response.text(), meetingTitle });
+    res.json({ summary: result.response.text(), meetingTitle });
+  } catch (err: any) {
+    console.error('Gemini error:', err.message);
+    res.status(500).json({ error: 'AI service temporarily unavailable. Please try again.' });
+  }
 };
 
 // ─── Feature 5: AI Roadmap Generator (OpenAI) ────────────
