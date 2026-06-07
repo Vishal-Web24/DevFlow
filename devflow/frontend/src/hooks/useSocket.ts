@@ -15,23 +15,19 @@ export const useProjectSocket = (projectId: string | undefined) => {
 
     joinProject(projectId);
 
-    // Task real-time updates
-    socket.on('task:updated', (data) => {
+    socket.on('task:updated', (data: any) => {
       dispatch(socketTaskUpdate(data));
     });
 
-    // Live notifications
-    socket.on('notification:new', (notification) => {
+    socket.on('notification:new', (notification: any) => {
       dispatch(addNotification(notification));
       toast(notification.message, { icon: '🔔', duration: 4000 });
     });
 
-    // Activity feed
-    socket.on('activity:new', (activity) => {
-      // Activity is handled in ActivityFeed component directly
+    socket.on('activity:new', (_activity: any) => {
+      
     });
 
-    // User presence
     socket.on('user:joined', ({ userId }: { userId: string }) => {
       console.log('User joined project:', userId);
     });
