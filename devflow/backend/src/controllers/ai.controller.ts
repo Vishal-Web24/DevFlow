@@ -66,7 +66,7 @@ export const explainBug = async (req: AuthRequest, res: Response): Promise<void>
     const cached = await cacheGet(cacheKey);
     if (cached) { res.json(cached); return; }
 
-    const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
+    const model = genAI.getGenerativeModel({ model: 'gemini-2.0-flash-lite' });
     const result = await model.generateContent(`You are a senior ${language} developer. Analyze this error log.
 
 Error Log:
