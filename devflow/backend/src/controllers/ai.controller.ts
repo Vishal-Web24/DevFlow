@@ -102,7 +102,7 @@ export const summarizeMeeting = async (req: AuthRequest, res: Response): Promise
   if (!notes) { res.status(400).json({ error: 'Meeting notes are required' }); return; }
 
   try {
-    const model = genAI.getGenerativeModel({ model: 'gemini-2.0-flash' });
+    const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' });
     const result = await model.generateContent(`Summarize this meeting professionally.
 
 Meeting: ${meetingTitle}
